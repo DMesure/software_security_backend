@@ -73,7 +73,7 @@ app.get('/', (req, res) => { res.send("This is Damien's backend for software sec
 //     },
 // ]
 
-app.get('/recipes', checkJwt, (req, res) => {
+app.get('/recipes', /*checkJwt,*/(req, res) => {
     recipes.get().then(result => res.send(result)).catch(err => res.send(err));
 })
 
