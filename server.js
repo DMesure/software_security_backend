@@ -16,7 +16,7 @@ const checkJwt = jwt({
         jwksUri: `https://${process.env.AUTH0_DOMAIN}/.well-known/jwks.json`,
     }),
     //Audience & issuer validaten
-    audience: `${process.env.AUTH0_AUDIENCE}:${PORT}`,
+    audience: `${process.env.AUTH0_AUDIENCE}`,
     issuer: `https://${process.env.AUTH0_DOMAIN}/`,
 
     algorithms: ["RS256"],
@@ -73,7 +73,7 @@ app.get('/', (req, res) => { res.send("This is Damien's backend for software sec
 //     },
 // ]
 
-app.get('/recipes', /*checkJwt,*/(req, res) => {
+app.get('/recipes', checkJwt, (req, res) => {
     recipes.get().then(result => res.send(result)).catch(err => res.send(err));
 })
 
