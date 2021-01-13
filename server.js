@@ -149,10 +149,10 @@ app.get('/user', checkJwt, (req, res) => {
     users.getById(undefined, req.user).then(result => res.send(result)).catch(err => res.status(404).end());
 })
 
-app.all("/user", (req, res) => {
-    res.set("Allow", "GET, OPTIONS");
-    res.status(405).end();
-})
+// app.all("/user", (req, res) => {
+//     res.set("Allow", "GET, OPTIONS");
+//     res.status(405).end();
+// })
 
 app.post('/users', checkJwt, (req, res) => {
     users.create(req.user)
