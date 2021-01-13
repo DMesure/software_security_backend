@@ -4,6 +4,7 @@ const jwt = require('express-jwt');
 const jwks = require('jwks-rsa');
 require('dotenv').config();
 const recipes = require('./recipes');
+const users = require('./users');
 
 const { PORT = 5000 } = process.env;
 
@@ -31,6 +32,11 @@ app.use(function (req, res, next) {
         "Origin, X-Requested-With, Content-Type, Accept, Authorization, "
     );
     res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    next();
+});
+
+app.param("recipeId", (req, res, next, id) => {
+    req.id = id;
     next();
 });
 
@@ -74,8 +80,25 @@ app.get('/', (req, res) => { res.send("This is Damien's backend for software sec
 //     },
 // ]
 
+
+/*RECIPES*/
 app.get('/recipes', (req, res) => {
     recipes.get().then(result => res.send(result)).catch(err => res.send(err));
+})
+
+app.get('/recipes/:recipeId', (req, res) => {
+    recipes.getById(req.id).then(result => res.send(result)).catch(err => res.status(404).end());
+})
+
+/*USERS*/
+app.get('/users', checkJwt, (req, res) => {
+    users.getById(undefined, req.user).then(result => res.send(result)).catch(err => res.status(404).end());
+})
+
+app.post('/users', checkJwt, (req, res) => {
+    users.create(req.user)
+        .then(result => res.status(201).location(`/users/${res}`).send())
+        .catch(err => res.send(err));
 })
 
 app.listen(PORT, () => console.log(`Server started on port ${PORT}`));

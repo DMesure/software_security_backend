@@ -24,6 +24,7 @@ const getById = async (id) =>
                     console.log("Not found");
                     return reject();
                 }
+                return resolve(recipe[0])
             }
         );
     });
@@ -37,6 +38,7 @@ const create = async ({ name, description, preparationTime, image }) =>
                 if (err || recipe.length === 0) {
                     return reject({ error: `Cannot store recipe: ${err.message}` });
                 }
+                return resolve(recipe.insertId);
             }
         );
     });
