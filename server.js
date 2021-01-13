@@ -40,65 +40,141 @@ app.param("recipeId", (req, res, next, id) => {
     next();
 });
 
+app.param("userId", (req, res, next, id) => {
+    req.userId = id;
+    next();
+});
+
 app.get('/', (req, res) => { res.send("This is Damien's backend for software security web application") });
 
-// const recipes = [
-//     {
-//         id: 1,
-//         name: "Instant frozen berry yogurt",
-//         description: "Three ingredients and two minutes is all you need to whip up this low-fat, low-calorie yogurt, which is ideal for eating after exercise",
-//         preparationtime: "2min",
-//         src: 'frozenyoghurt.png'
-//     },
-//     {
-//         id: 2,
-//         name: "Quick prawn, coconut & tomato curry",
-//         description: "Make curry in a hurry with this speedy recipe - a fragrant spice pot ready in half an hour",
-//         preparationtime: "30min",
-//         src: 'prawn.png'
-//     },
-//     {
-//         id: 3,
-//         name: "Chorizo bean burgers",
-//         description: "Combine Spanish sausage with the traditional pork variety for a pulse-packed, spicy burger",
-//         preparationtime: "26min",
-//         src: 'chorizoburger.png'
-//     },
-//     {
-//         id: 4,
-//         name: "Easy teriyaki chicken",
-//         description: "Try this easy, sticky Asian-style teriyaki chicken for a speedy weeknight supper – it takes just 20 minutes to make! Serve it with sticky rice and steamed greens",
-//         preparationtime: "20min",
-//         src: 'teriyakichicken.png'
-//     },
-//     {
-//         id: 5,
-//         name: "Pasta salad with tuna, capers & balsamic dressing",
-//         description: "Update tuna pasta salad by skipping the mayo and adding balsamic vinegar, olive oil, colourful tomatoes and celery",
-//         preparationtime: "20min",
-//         src: 'pastatunasalad.png'
-//     },
-// ]
+/*MIDDLEWARE*/
+const getById = (req, res, next) => {
+    if (req.user) {
+        users.getById(req.user).then((user_id) => {
+            req.caller_id = user_id;
+            next();
+        });
+    } else {
+        res.status(403).end();
+    }
+};
+
+const isOwner = (req, res, next) => {
+    if (req.userId && req.userId === req.caller_id) {
+        next();
+    } else if (req.id) {
+        recipes
+            .getCreator(req.id)
+            .then((owner_id) => {
+                if (owner_id === req.caller_id) {
+                    next();
+                } else {
+                    res.status(403).end();
+                }
+            })
+            .catch((err) => res.status(404).end());
+    } else {
+        res.status(403).end();
+    }
+};
+
+const isOwnerOrAdmin = (req, res, next) => {
+    users.isAdmin(req.caller_id).then((isAdmin) => {
+        if (!isAdmin) {
+            recipes
+                .getCreator(req.id)
+                .then((owner_id) => {
+                    if (owner_id === req.caller_id) {
+                        next();
+                    } else {
+                        res.status(403).end();
+                    }
+                })
+                .catch(() => res.status(404).end());
+        } else {
+            next();
+        }
+    });
+
+};
+
+const isAdmin = (req, res, next) => {
+    req.isAdmin = true;
+    users.isAdmin(req.caller_id).then((isAdmin) => {
+        req.isAdmin = isAdmin;
+        next();
+    });
+};
 
 
 /*RECIPES*/
 app.get('/recipes', (req, res) => {
-    recipes.get().then(result => res.send(result)).catch(err => res.send(err));
+    recipes.get().then(result => res.send(result)).catch(err => res.status(404).end());
+})
+
+app.post("/recipes", checkJwt, getById, isAdmin, (req, res) => {
+    if (!req.isAdmin) {
+        recipes.create(req.body).then((recipeId) => res.status(201).location(`/recipes/${recipeId}`).send())
+            .catch((err) => res.status(400).end())
+    } else {
+        res.status(403).end();
+    }
+})
+
+app.all("/recipes", (req, res) => {
+    res.set("Allow", "GET, POST, OPTIONS");
+    res.status(405).end();
 })
 
 app.get('/recipes/:recipeId', (req, res) => {
     recipes.getById(req.id).then(result => res.send(result)).catch(err => res.status(404).end());
 })
 
+app.put("/recipes/:recipeId", checkJwt, getById, isOwner, (req, res) => {
+    recipes.update(req.body, req.id).then((result) => res.status(200).end())
+        .catch((err) => res.status(404).end())
+})
+
+app.delete("/recipes/:recipeId", checkJwt, getById, isOwnerOrAdmin, (req, res) => {
+    recipes.destroy(req.id).then((result) => res.end()).catch((err) => res.status(400).end());
+})
+
+app.all("/recipes/:recipeId", (req, res) => {
+    res.set("Allow", "GET, PUT, OPTIONS, DELETE");
+    res.status(405).end();
+})
+
 /*USERS*/
-app.get('/users', checkJwt, (req, res) => {
+app.get('/user', checkJwt, (req, res) => {
     users.getById(undefined, req.user).then(result => res.send(result)).catch(err => res.status(404).end());
+})
+
+app.all("/user", (req, res) => {
+    res.set("Allow", "GET, OPTIONS");
+    res.status(405).end();
 })
 
 app.post('/users', checkJwt, (req, res) => {
     users.create(req.user)
         .then(result => res.status(201).location(`/users/${res}`).send())
-        .catch(err => res.send(err));
+        .catch(err => res.status(400).end());
 })
+
+app.all("/users", (req, res) => {
+    res.set("Allow", "POST, OPTIONS");
+    res.status(405).end();
+})
+
+app.delete('/users/:userId', checkJwt, getById, isOwner, (req, res) => {
+    users.destroy(req.caller_id)
+        .then(result => res.send())
+        .catch(err => res.status(400).end());
+})
+
+app.all("/users/:userId", (req, res) => {
+    res.set("Allow", "DELETE, OPTIONS");
+    res.status(405).end();
+})
+
 
 app.listen(PORT, () => console.log(`Server started on port ${PORT}`));

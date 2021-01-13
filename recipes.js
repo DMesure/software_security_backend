@@ -21,10 +21,25 @@ const getById = async (id) =>
                 if (err) {
                     return reject({ error: `Cannot store recipe: ${err.message}` });
                 } else if (recipe.length === 0) {
-                    console.log("Not found");
                     return reject();
                 }
                 return resolve(recipe[0])
+            }
+        );
+    });
+
+const getCreator = async (id) =>
+    await new Promise((resolve, reject) => {
+        connection.query(
+            "SELECT created_by FROM recipes WHERE id = ? LIMIT 1",
+            [id],
+            (err, recipe) => {
+                if (err) {
+                    return reject();
+                } else if (recipe.length === 0) {
+                    return reject();
+                }
+                return resolve(recipe[0].created_by)
             }
         );
     });
@@ -45,8 +60,7 @@ const create = async ({ name, description, preparationTime, image }) =>
 
 const update = async (
     { name, description, preparationTime, image },
-    recipeId
-) =>
+    recipeId) =>
     await new Promise((resolve, reject) => {
         connection.query(
             "UPDATE recipes SET name = ?, description = ?, preparationTime = ?, image = ? WHERE id = ?",
@@ -73,4 +87,4 @@ const destroy = async (recipeId) =>
 
 
 
-module.exports = { get, getById, create, update, destroy };
+module.exports = { get, getById, create, update, destroy, getCreator };
