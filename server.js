@@ -5,6 +5,7 @@ const jwks = require('jwks-rsa');
 require('dotenv').config();
 const recipes = require('./recipes');
 const users = require('./users');
+const auth0 = require('./auth0');
 const cors = require('cors');
 
 
@@ -75,7 +76,7 @@ const getById = (req, res, next) => {
 };
 
 const isOwner = (req, res, next) => {
-    if (req.userId && req.userId === req.caller_id) {
+    if (req.userId && req.userId == req.caller_id) {
         next();
     } else if (req.id) {
         recipes
@@ -179,6 +180,22 @@ app.all("/user", (req, res) => {
     res.status(405).end();
 })
 
+app.options("/getUserData", cors({ ...options, methods: "GET, OPTIONS" }));
+
+
+app.get('/getUserData', cors(options), checkJwt, (req, res) => {
+    users.getById(undefined, req.user)
+        .then(result => auth0.getUser(req.user)
+            .then(authRes => res.send({ ...result, authData: authRes }))
+            .catch(authErr => res.send(result)))
+        .catch(err => res.status(404).end());
+})
+
+app.all("/getUserData", (req, res) => {
+    res.set("Allow", "GET, OPTIONS");
+    res.status(405).end();
+})
+
 app.options("/users", cors({ ...options, methods: "OPTIONS, POST" }));
 
 
@@ -198,7 +215,9 @@ app.options("/users/:userId", cors({ ...options, methods: "OPTIONS, DELETE" }));
 
 app.delete('/users/:userId', cors(options), checkJwt, getById, isOwner, (req, res) => {
     users.destroy(req.caller_id)
-        .then(result => res.send())
+        .then(result => {
+            auth0.deleteUser(req.user).then(res => res.send()).catch(err => res.end());
+        })
         .catch(err => res.status(400).end());
 })
 
