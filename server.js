@@ -5,6 +5,14 @@ const jwks = require('jwks-rsa');
 require('dotenv').config();
 const recipes = require('./recipes');
 const users = require('./users');
+const cors = require('cors');
+
+
+const options = {
+    allowedHeaders: "Origin, X-Requested-With, Content-Type, Accept, Authorization",
+    credentials: true,
+    origin: process.env.FRONTEND_URL,
+}
 
 const { PORT = 5000 } = process.env;
 
@@ -25,15 +33,13 @@ const checkJwt = jwt({
 
 app.use(express.json());
 
-app.use(function (req, res, next) {
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header(
-        "Access-Control-Allow-Headers",
-        "Origin, X-Requested-With, Content-Type, Accept, Authorization, "
-    );
-    res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-    next();
+app.use((req, res, next) => {
+    res.format({
+        "application/json": () => next(),
+        default: () => res.status(406).end(),
+    });
 });
+
 
 app.param("recipeId", (req, res, next, id) => {
     req.id = id;
@@ -45,15 +51,24 @@ app.param("userId", (req, res, next, id) => {
     next();
 });
 
-app.get('/', (req, res) => { res.send("This is Damien's backend for software security web application") });
+/*ROOT*/
+
+app.options("/", cors({...options, methods: "OPTIONS, GET"}));
+
+app.get('/', cors(options), (req, res) => { res.send("This is Damien's backend for software security web application") });
+
+app.all("/", (req, res) => {
+    res.set("Allow", "GET, OPTIONS");
+    res.status(405).end();
+})
 
 /*MIDDLEWARE*/
 const getById = (req, res, next) => {
     if (req.user) {
-        users.getById(req.user).then((user_id) => {
+        users.getId(req.user).then((user_id) => {
             req.caller_id = user_id;
             next();
-        });
+        }).catch(err => res.status(400).end());
     } else {
         res.status(403).end();
     }
@@ -79,6 +94,7 @@ const isOwner = (req, res, next) => {
 };
 
 const isOwnerOrAdmin = (req, res, next) => {
+    console.log(req.user);
     users.isAdmin(req.caller_id).then((isAdmin) => {
         if (!isAdmin) {
             recipes
@@ -94,7 +110,7 @@ const isOwnerOrAdmin = (req, res, next) => {
         } else {
             next();
         }
-    });
+    }).catch(err => res.status(400).end());
 
 };
 
@@ -108,13 +124,17 @@ const isAdmin = (req, res, next) => {
 
 
 /*RECIPES*/
-app.get('/recipes', (req, res) => {
+
+app.options("/recipes", cors({...options, methods:"GET, POST, OPTIONS"}));
+
+app.get('/recipes', cors(options), (req, res) => {
     recipes.get().then(result => res.send(result)).catch(err => res.status(404).end());
 })
 
-app.post("/recipes", checkJwt, getById, isAdmin, (req, res) => {
+app.post("/recipes", cors({...options, exposedHeaders:"Location"}), checkJwt, getById, isAdmin, (req, res) => {
+    console.log(req.body);
     if (!req.isAdmin) {
-        recipes.create(req.body).then((recipeId) => res.status(201).location(`/recipes/${recipeId}`).send())
+        recipes.create(req.body, req.caller_id).then((recipeId) => res.status(201).location(`/recipes/${recipeId}`).send())
             .catch((err) => res.status(400).end())
     } else {
         res.status(403).end();
@@ -126,16 +146,19 @@ app.all("/recipes", (req, res) => {
     res.status(405).end();
 })
 
-app.get('/recipes/:recipeId', (req, res) => {
+app.options("/recipes/:recipeId", cors({...options, methods: "GET, PUT, DELETE, OPTIONS"}));
+
+
+app.get('/recipes/:recipeId', cors(options), (req, res) => {
     recipes.getById(req.id).then(result => res.send(result)).catch(err => res.status(404).end());
 })
 
-app.put("/recipes/:recipeId", checkJwt, getById, isOwner, (req, res) => {
+app.put("/recipes/:recipeId", cors(options), checkJwt, getById, isOwner, (req, res) => {
     recipes.update(req.body, req.id).then((result) => res.status(200).end())
         .catch((err) => res.status(404).end())
 })
 
-app.delete("/recipes/:recipeId", checkJwt, getById, isOwnerOrAdmin, (req, res) => {
+app.delete("/recipes/:recipeId", checkJwt, cors(options), getById, isOwnerOrAdmin, (req, res) => {
     recipes.destroy(req.id).then((result) => res.end()).catch((err) => res.status(400).end());
 })
 
@@ -145,16 +168,23 @@ app.all("/recipes/:recipeId", (req, res) => {
 })
 
 /*USERS*/
-app.get('/user', checkJwt, (req, res) => {
+
+app.options("/user", cors({...options, methods: "GET, OPTIONS"}));
+
+
+app.get('/user', cors(options), checkJwt, (req, res) => {
     users.getById(undefined, req.user).then(result => res.send(result)).catch(err => res.status(404).end());
 })
 
-// app.all("/user", (req, res) => {
-//     res.set("Allow", "GET, OPTIONS");
-//     res.status(405).end();
-// })
+app.all("/user", (req, res) => {
+    res.set("Allow", "GET, OPTIONS");
+    res.status(405).end();
+})
 
-app.post('/users', checkJwt, (req, res) => {
+app.options("/users", cors({...options, methods: "OPTIONS, POST"}));
+
+
+app.post('/users', cors(options), checkJwt, (req, res) => {
     users.create(req.user)
         .then(result => res.status(201).location(`/users/${res}`).send())
         .catch(err => res.status(400).end());
@@ -165,7 +195,10 @@ app.all("/users", (req, res) => {
     res.status(405).end();
 })
 
-app.delete('/users/:userId', checkJwt, getById, isOwner, (req, res) => {
+app.options("/users/:userId", cors({...options, methods: "OPTIONS, DELETE"}));
+
+
+app.delete('/users/:userId', cors(options), checkJwt, getById, isOwner, (req, res) => {
     users.destroy(req.caller_id)
         .then(result => res.send())
         .catch(err => res.status(400).end());

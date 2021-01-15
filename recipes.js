@@ -44,13 +44,14 @@ const getCreator = async (id) =>
         );
     });
 
-const create = async ({ name, description, preparationTime, image }) =>
+const create = async ({ name, description, preparationTime = null, image = null }, userId) =>
     await new Promise((resolve, reject) => {
         connection.query(
-            "INSERT INTO recipes VALUES (NULL, ?, ?, ?, ?)",
-            [name, description, preparationTime, image],
+            "INSERT INTO recipes VALUES (NULL, ?, ?, ?, ?, ?)",
+            [name, description, preparationTime, image, userId],
             (err, recipe) => {
                 if (err || recipe.length === 0) {
+                    console.log(err);
                     return reject({ error: `Cannot store recipe: ${err.message}` });
                 }
                 return resolve(recipe.insertId);
