@@ -53,7 +53,7 @@ app.param("userId", (req, res, next, id) => {
 
 /*ROOT*/
 
-app.options("/", cors({...options, methods: "OPTIONS, GET"}));
+app.options("/", cors({ ...options, methods: "OPTIONS, GET" }));
 
 app.get('/', cors(options), (req, res) => { res.send("This is Damien's backend for software security web application") });
 
@@ -94,7 +94,6 @@ const isOwner = (req, res, next) => {
 };
 
 const isOwnerOrAdmin = (req, res, next) => {
-    console.log(req.user);
     users.isAdmin(req.caller_id).then((isAdmin) => {
         if (!isAdmin) {
             recipes
@@ -125,14 +124,13 @@ const isAdmin = (req, res, next) => {
 
 /*RECIPES*/
 
-app.options("/recipes", cors({...options, methods:"GET, POST, OPTIONS"}));
+app.options("/recipes", cors({ ...options, methods: "GET, POST, OPTIONS" }));
 
 app.get('/recipes', cors(options), (req, res) => {
     recipes.get().then(result => res.send(result)).catch(err => res.status(404).end());
 })
 
-app.post("/recipes", cors({...options, exposedHeaders:"Location"}), checkJwt, getById, isAdmin, (req, res) => {
-    console.log(req.body);
+app.post("/recipes", cors({ ...options, exposedHeaders: "Location" }), checkJwt, getById, isAdmin, (req, res) => {
     if (!req.isAdmin) {
         recipes.create(req.body, req.caller_id).then((recipeId) => res.status(201).location(`/recipes/${recipeId}`).send())
             .catch((err) => res.status(400).end())
@@ -146,7 +144,7 @@ app.all("/recipes", (req, res) => {
     res.status(405).end();
 })
 
-app.options("/recipes/:recipeId", cors({...options, methods: "GET, PUT, DELETE, OPTIONS"}));
+app.options("/recipes/:recipeId", cors({ ...options, methods: "GET, PUT, DELETE, OPTIONS" }));
 
 
 app.get('/recipes/:recipeId', cors(options), (req, res) => {
@@ -169,7 +167,7 @@ app.all("/recipes/:recipeId", (req, res) => {
 
 /*USERS*/
 
-app.options("/user", cors({...options, methods: "GET, OPTIONS"}));
+app.options("/user", cors({ ...options, methods: "GET, OPTIONS" }));
 
 
 app.get('/user', cors(options), checkJwt, (req, res) => {
@@ -181,7 +179,7 @@ app.all("/user", (req, res) => {
     res.status(405).end();
 })
 
-app.options("/users", cors({...options, methods: "OPTIONS, POST"}));
+app.options("/users", cors({ ...options, methods: "OPTIONS, POST" }));
 
 
 app.post('/users', cors(options), checkJwt, (req, res) => {
@@ -195,7 +193,7 @@ app.all("/users", (req, res) => {
     res.status(405).end();
 })
 
-app.options("/users/:userId", cors({...options, methods: "OPTIONS, DELETE"}));
+app.options("/users/:userId", cors({ ...options, methods: "OPTIONS, DELETE" }));
 
 
 app.delete('/users/:userId', cors(options), checkJwt, getById, isOwner, (req, res) => {
