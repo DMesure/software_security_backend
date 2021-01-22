@@ -12,7 +12,6 @@ const cors = require('cors');
 const options = {
     allowedHeaders: "Origin, X-Requested-With, Content-Type, Accept, Authorization",
     credentials: true,
-    origin: process.env.FRONTEND_URL,
 }
 
 const { PORT = 5000 } = process.env;
