@@ -2,13 +2,16 @@
 
 https://www.dmesure.xyz
 
-# Github repo naar frontend
+# Github repo frontend
 
 https://github.com/DMesure/software_security_web_application.git
 
-# Toegangscontrole
+# Access control & security
 
-Ter info: toegangscontrole tot de REST API gebeurt adhv accestoken
+Info: Access control to the REST API is done via an accestoken
+Some resources are only available when authenticated (view later), this ensures that some calls to the API are shielded from being requested by unvalidated sources.
+
+Auth0 was used as the identity provider, which uses a built-in layer that checks the user's new password against a list of the 10.000 most common passwords.
 
 # Users & permissions
 
